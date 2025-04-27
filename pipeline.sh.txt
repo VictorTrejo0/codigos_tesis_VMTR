@@ -1,0 +1,12 @@
+f=${PWD##*/}
+echo ---------------------------------    $f    ------------------------------------
+
+trim_galore --paired --fastqc *R1*.fastq.gz *R2*.fastq.gz
+bowtie2 -x /home/ubuntu/Drive0/victor/fastq/tair10_chloroplast/at31_pt -q -N 1 -p 8 --no-mixed --no-discordant --fr -1 *val_1.fq.gz -2 *val_2.fq.gz -S "$f"_chloroplast_mapping.sam
+samtools view -bf 0x2 "$f"_chloroplast_mapping.sam > "$f"_chloroplast_mapping.bam
+samtools sort -n "$f"_chloroplast_mapping.bam -o "$f"_chloroplast_mapping_sorted.bam
+samtools fixmate "$f"_chloroplast_mapping_sorted.bam "$f"_chloroplast_mapping_sorted_fixed.bam
+bamToBed -bedpe -mate1 -i "$f"_chloroplast_mapping_sorted_fixed.bam | awk '{if($9=="+") print $1 "\t" $2 "\t" $6 "\t" $7 "\t" $8 "\t" $9; else print $1 "\t" $5 "\t" $3 "\t" $7 "\t" $8 "\t" $9}'| awk '{if($2>0) print $0}' | sortBed -i stdin > "$f"_chloroplast_mapping.bed
+coverageBed -d -a /home/ubuntu/Drive0/victor/2nd_attempt/Negative_Supercoil_Psoralen/Pt_numero.txt -b *_chloroplast_mapping.bed > "$f"_chloroplast_mapping_cov.bed &
+
+awk '$1~/[Pt]/ {print $1 "\t" $3-$2}' "$f"_chloroplast_mapping.bed > "$f"_frags.bed
